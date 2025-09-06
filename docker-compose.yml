@@ -1,0 +1,75 @@
+version: "3.7"
+
+services:
+  pshot-app:
+    image: praisetecnologia/praise-shot:latest
+    networks:
+      - network_public
+    environment:
+      # Next.js Configuration
+      - NODE_ENV=production
+      - NEXTAUTH_URL=https://pshot.praisechat.com.br
+      - NEXTAUTH_SECRET=fcvxe9oxp6ppcpn3c4dyi8inf0bjs91xmfd00tpp
+      
+      # Supabase Configuration
+      - NEXT_PUBLIC_SUPABASE_URL=https://studio.praisesistemas.uk
+      - NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ewogICJyb2xlIjogImFub24iLAogICJpc3MiOiAic3VwYWJhc2UiLAogICJpYXQiOiAxNzAzMzg2ODAwLAogICJleHAiOiAxODYxMjM5NjAwCn0.kU_d1xlxfuEgkYMC0mYoiZHQpUvRE2EnilTZ7S0bfIM
+      - SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ewogICJyb2xlIjogInNlcnZpY2Vfcm9sZSIsCiAgImlzcyI6ICJzdXBhYmFzZSIsCiAgImlhdCI6IDE3MDMzODY4MDAsCiAgImV4cCI6IDE4NjEyMzk2MDAKfQ.mj3UcBqInQLBf0hTWf5HILeZa8yKfT5Oic6oFbO11LM
+      
+      # Webhook Configuration
+      - NEXT_PUBLIC_WEBHOOK_URL=https://praisewhk.praisesistemas.uk/webhook/criarqrpshot
+      
+      # Encryption Secret
+      - ENCRYPTION_SECRET=fcvxe9oxp6ppcpn3c4dyi8inf0bjs91xmfd00tpp
+      
+    deploy:
+      mode: replicated
+      replicas: 1
+      update_config:
+        order: start-first
+        failure_action: rollback
+        delay: 10s
+      rollback_config:
+        parallelism: 0
+        order: stop-first
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1024M
+        reservations:
+          cpus: '1'
+          memory: 1024M
+      labels:
+        # Traefik configuration for Docker Swarm
+        - "traefik.enable=true"
+        - "traefik.http.routers.pshot-app.rule=Host(`pshot.praisechat.com.br`)"
+        - "traefik.http.routers.pshot-app.entrypoints=websecure"
+        - "traefik.http.routers.pshot-app.tls.certresolver=letsencryptresolver"
+        - "traefik.http.services.pshot-app.loadbalancer.server.port=3000"
+        
+        # Security headers
+        - "traefik.http.middlewares.pshot-app-headers.headers.customResponseHeaders.X-Robots-Tag=noindex,nofollow,nosnippet,noarchive,notranslate,noimageindex"
+        - "traefik.http.middlewares.pshot-app-headers.headers.sslRedirect=true"
+        - "traefik.http.middlewares.pshot-app-headers.headers.stsSeconds=31536000"
+        - "traefik.http.middlewares.pshot-app-headers.headers.stsIncludeSubdomains=true"
+        - "traefik.http.middlewares.pshot-app-headers.headers.stsPreload=true"
+        - "traefik.http.middlewares.pshot-app-headers.headers.forceSTSHeader=true"
+        - "traefik.http.middlewares.pshot-app-headers.headers.customFrameOptionsValue=SAMEORIGIN"
+        
+        # Headers for Server Actions (Next.js specific)
+        - "traefik.http.middlewares.pshot-app-headers.headers.customRequestHeaders.Origin=https://pshot.praisechat.com.br"
+        - "traefik.http.middlewares.pshot-app-headers.headers.customRequestHeaders.Host=pshot.praisechat.com.br"
+        
+        # Compression and middleware application
+        - "traefik.http.middlewares.pshot-app-compress.compress=true"
+        - "traefik.http.routers.pshot-app.middlewares=pshot-app-compress,pshot-app-headers"
+
+networks:
+  network_public:
+    external: true
+    name: network_public

@@ -1,0 +1,211 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: Arial, Helvetica, sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Ocultar scrollbar mas manter a funcionalidade de rolagem */
+
+/* Webkit (Chrome, Safari, Edge) */
+::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+/* Firefox */
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none; /* IE e Edge */
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 273 87% 48%; /* #7f10e6 em HSL */
+    --card: 0 0% 100%;
+    --card-foreground: 273 87% 48%; /* #7f10e6 */
+    --popover: 0 0% 100%;
+    --popover-foreground: 273 87% 48%; /* #7f10e6 */
+    --primary: 273 87% 48%; /* #7f10e6 */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 96.1%;
+    --secondary-foreground: 273 87% 48%; /* #7f10e6 */
+    --muted: 0 0% 96.1%;
+    --muted-foreground: 273 87% 65%; /* Tom mais claro do #7f10e6 */
+    --accent: 273 87% 48%; /* #7f10e6 */
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 273 30% 85%; /* Borda roxa clara */
+    --input: 273 30% 90%; /* Input com fundo roxo muito claro */
+    --ring: 273 87% 48%; /* #7f10e6 */
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+    --radius: 0.5rem;
+    
+    /* Sidebar - Esquema com degradê roxo/lilás */
+    --sidebar-background-from: 273 87% 30%;
+    --sidebar-background-to: 273 87% 40%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 273 87% 90%;
+    --sidebar-primary-foreground: 273 87% 20%;
+    --sidebar-accent: 273 87% 45%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 273 87% 40%;
+    --sidebar-ring: 273 87% 90%;
+  }
+  
+  .dark {
+    --background: 273 50% 5%; /* Fundo escuro com tom roxo intenso */
+    --foreground: 273 30% 95%; /* Roxo muito claro para texto */
+    --card: 273 50% 8%;
+    --card-foreground: 273 30% 95%; /* Roxo muito claro */
+    --popover: 273 50% 8%;
+    --popover-foreground: 273 30% 95%; /* Roxo muito claro */
+    --primary: 273 87% 60%; /* #7f10e6 um pouco mais claro */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 273 40% 12%;
+    --secondary-foreground: 273 30% 95%; /* Roxo muito claro */
+    --muted: 273 40% 15%;
+    --muted-foreground: 273 20% 75%; /* Roxo mais suave */
+    --accent: 273 50% 20%; /* Tom de roxo mais escuro */
+    --accent-foreground: 273 30% 95%; /* Roxo muito claro */
+    --destructive: 0 62.8% 40.6%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 273 30% 20%; /* Borda em tom de roxo */
+    --input: 273 40% 15%;
+    --ring: 273 87% 60%; /* Anel roxo */
+    --chart-1: 220 70% 60%;
+    --chart-2: 160 60% 55%;
+    --chart-3: 30 80% 65%;
+    --chart-4: 280 65% 70%;
+    --chart-5: 340 75% 65%;
+    
+    /* Sidebar - Modo Escuro com degradê */
+    --sidebar-background-from: 273 60% 10%;
+    --sidebar-background-to: 273 50% 15%;
+    --sidebar-foreground: 273 30% 98%; /* Texto quase branco com leve tom roxo */
+    --sidebar-primary: 273 87% 95%;
+    --sidebar-primary-foreground: 273 50% 15%;
+    --sidebar-accent: 273 50% 25%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 273 30% 20%;
+    --sidebar-ring: 273 87% 95%;
+  }
+}
+
+@layer components {
+  .btn-gradient {
+    @apply relative overflow-hidden bg-transparent text-gray-900 transition-all duration-300 border border-gray-200 hover:bg-transparent;
+    background: transparent;
+    background-clip: padding-box;
+    position: relative;
+  }
+  
+  .btn-gradient::before {
+    content: '';
+    @apply absolute inset-0 rounded-md -z-10;
+    background: linear-gradient(90deg, #3B82F6 0%, #8B5CF6 100%);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    padding: 2px; /* Aumenta a espessura da borda */
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  
+  .btn-gradient:hover::before {
+    opacity: 1;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  
+  /* Scrollbar customizado para lista de configurações */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    display: block;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 3px;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+    transition: background-color 0.2s ease;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+  }
+  
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 #f1f5f9;
+  }
+  
+  /* Garante que todo o texto use a cor #7f10e6 */
+  * {
+    color: hsl(273, 87%, 48%);
+  }
+  
+  /* Exceções para elementos que não devem herdar a cor */
+  input,
+  textarea,
+  select,
+  button,
+  [class*="text-"],
+  [class*="text-"] * {
+    color: inherit;
+  }
+  
+  /* Garante que as cores de texto do Tailwind funcionem */
+  .text-white,
+  .text-black,
+  .text-gray-50, .text-gray-100, .text-gray-200, .text-gray-300, .text-gray-400, .text-gray-500, .text-gray-600, .text-gray-700, .text-gray-800, .text-gray-900,
+  .text-slate-50, .text-slate-100, .text-slate-200, .text-slate-300, .text-slate-400, .text-slate-500, .text-slate-600, .text-slate-700, .text-slate-800, .text-slate-900,
+  .text-zinc-50, .text-zinc-100, .text-zinc-200, .text-zinc-300, .text-zinc-400, .text-zinc-500, .text-zinc-600, .text-zinc-700, .text-zinc-800, .text-zinc-900,
+  .text-neutral-50, .text-neutral-100, .text-neutral-200, .text-neutral-300, .text-neutral-400, .text-neutral-500, .text-neutral-600, .text-neutral-700, .text-neutral-800, .text-neutral-900,
+  .text-stone-50, .text-stone-100, .text-stone-200, .text-stone-300, .text-stone-400, .text-stone-500, .text-stone-600, .text-stone-700, .text-stone-800, .text-stone-900,
+  .text-red-50, .text-red-100, .text-red-200, .text-red-300, .text-red-400, .text-red-500, .text-red-600, .text-red-700, .text-red-800, .text-red-900,
+  .text-orange-50, .text-orange-100, .text-orange-200, .text-orange-300, .text-orange-400, .text-orange-500, .text-orange-600, .text-orange-700, .text-orange-800, .text-orange-900,
+  .text-amber-50, .text-amber-100, .text-amber-200, .text-amber-300, .text-amber-400, .text-amber-500, .text-amber-600, .text-amber-700, .text-amber-800, .text-amber-900,
+  .text-yellow-50, .text-yellow-100, .text-yellow-200, .text-yellow-300, .text-yellow-400, .text-yellow-500, .text-yellow-600, .text-yellow-700, .text-yellow-800, .text-yellow-900,
+  .text-lime-50, .text-lime-100, .text-lime-200, .text-lime-300, .text-lime-400, .text-lime-500, .text-lime-600, .text-lime-700, .text-lime-800, .text-lime-900,
+  .text-green-50, .text-green-100, .text-green-200, .text-green-300, .text-green-400, .text-green-500, .text-green-600, .text-green-700, .text-green-800, .text-green-900,
+  .text-emerald-50, .text-emerald-100, .text-emerald-200, .text-emerald-300, .text-emerald-400, .text-emerald-500, .text-emerald-600, .text-emerald-700, .text-emerald-800, .text-emerald-900,
+  .text-teal-50, .text-teal-100, .text-teal-200, .text-teal-300, .text-teal-400, .text-teal-500, .text-teal-600, .text-teal-700, .text-teal-800, .text-teal-900,
+  .text-cyan-50, .text-cyan-100, .text-cyan-200, .text-cyan-300, .text-cyan-400, .text-cyan-500, .text-cyan-600, .text-cyan-700, .text-cyan-800, .text-cyan-900,
+  .text-sky-50, .text-sky-100, .text-sky-200, .text-sky-300, .text-sky-400, .text-sky-500, .text-sky-600, .text-sky-700, .text-sky-800, .text-sky-900,
+  .text-blue-50, .text-blue-100, .text-blue-200, .text-blue-300, .text-blue-400, .text-blue-500, .text-blue-600, .text-blue-700, .text-blue-800, .text-blue-900,
+  .text-indigo-50, .text-indigo-100, .text-indigo-200, .text-indigo-300, .text-indigo-400, .text-indigo-500, .text-indigo-600, .text-indigo-700, .text-indigo-800, .text-indigo-900,
+  .text-violet-50, .text-violet-100, .text-violet-200, .text-violet-300, .text-violet-400, .text-violet-500, .text-violet-600, .text-violet-700, .text-violet-800, .text-violet-900,
+  .text-purple-50, .text-purple-100, .text-purple-200, .text-purple-300, .text-purple-400, .text-purple-500, .text-purple-600, .text-purple-700, .text-purple-800, .text-purple-900,
+  .text-fuchsia-50, .text-fuchsia-100, .text-fuchsia-200, .text-fuchsia-300, .text-fuchsia-400, .text-fuchsia-500, .text-fuchsia-600, .text-fuchsia-700, .text-fuchsia-800, .text-fuchsia-900,
+  .text-pink-50, .text-pink-100, .text-pink-200, .text-pink-300, .text-pink-400, .text-pink-500, .text-pink-600, .text-pink-700, .text-pink-800, .text-pink-900,
+  .text-rose-50, .text-rose-100, .text-rose-200, .text-rose-300, .text-rose-400, .text-rose-500, .text-rose-600, .text-rose-700, .text-rose-800, .text-rose-900 {
+    color: inherit;
+  }
+}

@@ -1,0 +1,395 @@
+"use client"
+
+import { useState, useEffect } from "react"
+import { useForm, useFieldArray, SubmitHandler } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { z } from "zod"
+import { SurveyQuestion } from "@/lib/types"
+import { Button } from "@/components/ui/button"
+import { Controller } from "react-hook-form"
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Plus, Trash2, MessageSquare, Loader2 } from "lucide-react"
+
+import { useAuth } from "@/contexts/auth-context"
+import { surveyService } from "@/lib/survey-service"
+import { useRouter } from "next/navigation"
+
+// Zod schema alinhado aos campos do formulário
+const optionSchema = z.string().min(1, "Opção não pode ser vazia")
+const questionSchema = z.object({
+  question: z.string().min(1, "Pergunta é obrigatória"),
+  options: z.array(optionSchema).min(2, "Pelo menos 2 opções").max(4, "Máximo 4 opções"),
+  step: z.number().int().min(1, "Passo deve ser >= 1"),
+})
+const surveyFormSchema = z.object({
+  description: z.string().optional(),
+  store: z.string().min(1, "Selecione uma loja"),
+  questions: z.array(questionSchema).min(1, "Adicione ao menos 1 pergunta"),
+})
+
+type SurveyForm = z.infer<typeof surveyFormSchema>
+
+export default function SurveysPage() {
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const router = useRouter()
+  const [isLoading, setIsLoading] = useState(true)
+  const { user } = useAuth()
+  const [surveys, setSurveys] = useState<SurveyQuestion[]>([])
+  const [selectedStore, setSelectedStore] = useState<string>('')
+  const [filterStore, setFilterStore] = useState<string>('')
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [surveyToDelete, setSurveyToDelete] = useState<SurveyQuestion | null>(null)
+  
+  // Lista de lojas para o filtro (pode ser substituída por uma chamada à API se necessário)
+  const stores = Array.from({ length: 20 }, (_, i) => ({
+    id: String(i + 1),
+    name: `Loja ${i + 1}`
+  }))
+  
+  // Obter a sub-rede do usuário (usando empresa como fallback)
+  const userSubRede = user?.sub_rede || user?.empresa || '';
+
+  // Função para abrir o diálogo de confirmação de exclusão
+  const handleDeleteClick = (survey: SurveyQuestion) => {
+    setSurveyToDelete(survey);
+    setShowDeleteDialog(true);
+  };
+
+  // Função para confirmar a exclusão
+  const confirmDelete = async () => {
+    if (!surveyToDelete?.id) {
+      console.error('ID da pesquisa não encontrado');
+      return;
+    }
+
+    try {
+      const success = await surveyService.deleteSurvey(surveyToDelete.id);
+      if (success) {
+        // Atualiza a lista de pesquisas após a exclusão
+        await loadSurveys();
+      } else {
+        alert('Não foi possível excluir a pesquisa. Tente novamente.');
+      }
+    } catch (error) {
+      console.error('Erro ao excluir pesquisa:', error);
+      alert('Ocorreu um erro ao tentar excluir a pesquisa.');
+    } finally {
+      setShowDeleteDialog(false);
+      setSurveyToDelete(null);
+    }
+  };
+
+  // Filtrar pesquisas com base na loja selecionada e na sub-rede do usuário
+  const filteredSurveys = surveys.filter(survey => {
+    const matchesStore = !filterStore || survey.loja === filterStore;
+    const matchesSubRede = !userSubRede || survey.sub_rede === userSubRede;
+    return matchesStore && matchesSubRede;
+  });
+  
+  // Log para depuração
+  console.log('Usuário atual no componente SurveysPage:', user)
+  
+  // Função para carregar pesquisas
+  const loadSurveys = async () => {
+    try {
+      if (!user) {
+        console.error('Usuário não autenticado')
+        return
+      }
+      
+      setIsLoading(true)
+      const empresa = user.empresa || 'empresa_padrao'
+      const subRede = user.empresa || 'empresa_padrao' // Usando a empresa como sub-rede também
+      
+      const data = await surveyService.getSurveys(empresa, subRede)
+      setSurveys(data || [])
+    } catch (error) {
+      console.error('Erro ao carregar pesquisas:', error)
+      setSurveys([])
+    } finally {
+      setIsLoading(false)
+    }
+  }
+  
+  // Carregar pesquisas existentes quando a página é carregada ou quando o usuário muda
+  useEffect(() => {
+    console.log('useEffect executado, usuário:', user)
+    if (user) {
+      console.log('Usuário autenticado, carregando pesquisas...')
+      loadSurveys()
+    } else {
+      console.log('Usuário não autenticado, redirecionando...')
+      router.push('/login')
+    }
+  }, [user])
+
+  const {
+    control,
+    handleSubmit,
+    reset,
+    watch,
+    formState: { errors }
+  } = useForm<SurveyForm>({
+    resolver: zodResolver(surveyFormSchema),
+    mode: 'onChange',
+    defaultValues: {
+      description: "",
+      store: "",
+      questions: [
+        { 
+          question: "Como você avalia o atendimento? (Clique para editar a pergunta)", 
+          options: ["Ótimo", "Bom", "Regular", "Ruim"],
+          step: 1
+        }
+      ],
+    },
+  });
+
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: "questions",
+  });
+  
+  // Estado para controlar se o formulário foi tocado
+  const [formTouched, setFormTouched] = useState(false);
+  
+  // Marcar o formulário como tocado quando qualquer campo for alterado
+  useEffect(() => {
+    const subscription = watch(() => setFormTouched(true));
+    return () => subscription.unsubscribe();
+  }, [watch]);
+
+  const onSubmit: SubmitHandler<SurveyForm> = async (data) => {
+    try {
+      setIsSubmitting(true)
+      
+      // Verificar se há pelo menos uma pergunta
+      if (!data.questions || data.questions.length === 0) {
+        alert('Adicione pelo menos uma pergunta à pesquisa')
+        return
+      }
+      
+      // Verificar se todas as perguntas têm pelo menos 2 opções
+      const hasInvalidQuestion = data.questions.some(q => q.options.length < 2)
+      if (hasInvalidQuestion) {
+        alert('Cada pergunta deve ter pelo menos 2 opções')
+        return
+      }
+      
+      // Preparar os dados da pergunta (usando a primeira pergunta do array)
+      const questionData = {
+        pergunta: data.questions[0].question,
+        opcoes: data.questions[0].options.join(';'),
+        passo: data.questions[0].step,
+        status: 'ativo',
+        loja: data.store,
+        bot: 'bot_padrao',
+        sala: 'sala_padrao'
+      }
+      
+      console.log('Enviando pergunta:', questionData)
+      
+      // Enviar a pesquisa para a API
+      const result = await surveyService.createSurvey(questionData)
+      console.log('Pesquisa criada com sucesso:', result)
+      
+      // Limpa o formulário
+      reset({
+        description: "",
+        store: "",
+        questions: [
+          {
+            question:
+              "Como você avalia o atendimento? (Clique para editar a pergunta)",
+            options: ["Ótimo", "Bom", "Regular", "Ruim"],
+            step: 1,
+          },
+        ],
+      })
+      
+      // Recarregar as pesquisas para mostrar a nova pesquisa no topo
+      await loadSurveys()
+      
+      // Mostrar mensagem de sucesso
+      console.log("Pesquisa criada com sucesso!")
+      
+      // Usar o router para navegar de volta para o dashboard
+      router.push('/dashboard')
+      router.refresh() // Forçar atualização da página
+    } catch (error) {
+      console.error("Erro ao salvar no Supabase:", error)
+      alert(`Erro ao salvar: ${(
+        error as any)?.message || JSON.stringify(error)
+      }`)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const addOption = (questionIndex: number) => {
+    const currentOptions = fields[questionIndex].options
+    if (currentOptions.length < 4) {
+      const updatedFields = [...fields]
+      updatedFields[questionIndex].options.push("")
+      // Atualizar o formulário
+    }
+  }
+
+  return (
+    <div className="space-y-6 text-gray-700 [&_*]:!text-gray-700 w-full">
+      <style jsx global>{`
+        .text-muted-foreground {
+          color: hsl(0, 0%, 45%) !important;
+        }
+        .text-muted-foreground:hover {
+          color: hsl(0, 0%, 30%) !important;
+        }
+      `}</style>
+
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-800">Pesquisas</h1>
+          <p className="text-sm text-gray-500">
+            Crie e gerencie suas pesquisas de satisfação
+          </p>
+        </div>
+        <Button
+          onClick={() => router.push('/dashboard/surveys/new')}
+          className="bg-[#7f10e6] hover:bg-[#6a0dbf] text-white"
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          Nova Pesquisa
+        </Button>
+      </div>
+
+      <Card className="w-full">
+        <CardHeader>
+          <CardTitle>Pesquisas Existentes</CardTitle>
+          <CardDescription>
+            Todas as pesquisas criadas para sua empresa
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row gap-4 mb-4">
+              <div className="w-full sm:w-64">
+                <Select 
+                  value={filterStore}
+                  onValueChange={(value) => setFilterStore(value === 'all' ? '' : value)}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Filtrar por loja" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas as lojas</SelectItem>
+                    {stores.map(store => (
+                      <SelectItem key={store.id} value={store.id}>
+                        {store.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {userSubRede && (
+                <div className="flex items-center justify-center px-4 py-2 bg-gray-100 rounded-md text-sm text-gray-600">
+                  Sub-rede: {userSubRede}
+                </div>
+              )}
+            </div>
+
+            {isLoading ? (
+              <div className="flex justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-[#7f10e6]" />
+              </div>
+            ) : filteredSurveys.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-gray-500 text-lg">Não há pesquisas criadas <span className="text-[#7f10e6]">:(</span></p>
+                <p className="text-sm text-gray-400 mt-2">Selecione outra loja ou crie uma nova pesquisa.</p>
+              </div>
+            ) : (
+              filteredSurveys.map((survey) => (
+                <div key={`survey-${survey.id || Math.random().toString(36).substring(7)}`} className="border rounded-lg p-4 w-full" data-component-name="SurveysPage">
+                  <div className="flex items-center justify-between w-full" data-component-name="SurveysPage">
+                    <div className="flex-1" data-component-name="SurveysPage">
+                      <h3 className="font-medium text-[#7f10e6]">
+                        {(() => {
+                          // Extrair a pergunta do campo combinado
+                          const perguntaCompleta = survey.pergunta || survey.question || '';
+                          const partes = typeof perguntaCompleta === 'string' ? perguntaCompleta.split(';') : [];
+                          return partes.length > 0 ? partes[0] : perguntaCompleta;
+                        })()}
+                      </h3>
+                      <p className="text-sm text-[#7f10e6]/80">Loja: {survey.loja}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <p className="text-xs text-[#7f10e6]/60">
+                          {(() => {
+                            // Contar opções a partir do campo combinado
+                            const perguntaCompleta = survey.pergunta || survey.question || '';
+                            const partes = typeof perguntaCompleta === 'string' ? perguntaCompleta.split(';') : [];
+                            // Subtrair 1 porque a primeira parte é a pergunta
+                            const numOpcoes = partes.length > 1 ? partes.length - 1 : 0;
+                            return numOpcoes;
+                          })()} opções
+                        </p>
+                        <span className="text-xs bg-[#7f10e6]/10 text-[#7f10e6] px-2 py-0.5 rounded-full">
+                          Passo: {survey.passo || survey.step || 1}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center" data-component-name="SurveysPage">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteClick(survey);
+                        }}
+                        className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                        title="Excluir pesquisa"
+                      >
+                        <Trash2 className="h-5 w-5" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </CardContent>
+      </Card>
+      
+      {/* Diálogo de confirmação de exclusão */}
+      {showDeleteDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold mb-4">Confirmar Exclusão</h3>
+            <p className="mb-6">Tem certeza que deseja excluir esta pesquisa? Esta ação não pode ser desfeita.</p>
+            
+            <div className="flex justify-end space-x-3">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowDeleteDialog(false);
+                  setSurveyToDelete(null);
+                }}
+              >
+                Cancelar
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={confirmDelete}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                Excluir
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}

@@ -1,0 +1,137 @@
+/* Estilos customizados para o sidebar moderno */
+
+/* Scrollbar customizada */
+.scrollbar-thin {
+  scrollbar-width: thin;
+}
+
+.scrollbar-track-transparent {
+  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+}
+
+.scrollbar-thumb-white\/10::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scrollbar-thumb-white\/10::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thumb-white\/10::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+.scrollbar-thumb-white\/10:hover::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Animações suaves para os itens do menu */
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Aplicar animações aos itens do menu */
+[data-sidebar="menu-item"] {
+  animation: slideInLeft 0.3s ease-out;
+}
+
+[data-sidebar="menu-item"]:nth-child(1) { animation-delay: 0.1s; }
+[data-sidebar="menu-item"]:nth-child(2) { animation-delay: 0.15s; }
+[data-sidebar="menu-item"]:nth-child(3) { animation-delay: 0.2s; }
+[data-sidebar="menu-item"]:nth-child(4) { animation-delay: 0.25s; }
+[data-sidebar="menu-item"]:nth-child(5) { animation-delay: 0.3s; }
+[data-sidebar="menu-item"]:nth-child(6) { animation-delay: 0.35s; }
+[data-sidebar="menu-item"]:nth-child(7) { animation-delay: 0.4s; }
+
+/* Efeito glassmorphism para elementos ativos */
+.glass-effect {
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Efeito de brilho nos ícones */
+.icon-glow {
+  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.3));
+}
+
+/* Transições suaves para todos os elementos interativos */
+.smooth-transition {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Efeito de hover nos botões */
+.hover-lift:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Gradiente animado para elementos ativos */
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.animated-gradient {
+  background-size: 200% 200%;
+  animation: gradientShift 3s ease infinite;
+}
+
+/* Efeito de pulse para indicadores */
+@keyframes pulse-glow {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.05);
+  }
+}
+
+.pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Responsividade aprimorada */
+@media (max-width: 768px) {
+  [data-sidebar="sidebar"] {
+    width: 280px !important;
+  }
+}
+
+/* Melhorias de acessibilidade */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Estados de foco aprimorados */
+.focus-ring:focus-visible {
+  outline: 2px solid rgba(59, 130, 246, 0.5);
+  outline-offset: 2px;
+}

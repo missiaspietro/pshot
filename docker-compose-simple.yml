@@ -1,0 +1,38 @@
+version: "3.7"
+
+services:
+  pshot-app:
+    image: praisetecnologia/praise-shot:latest
+    container_name: pshot-app-simple
+    restart: unless-stopped
+    networks:
+      - network_public
+    environment:
+      # Next.js Configuration
+      - NODE_ENV=production
+      - NEXTAUTH_URL=https://pshot.praisechat.com.br
+      - NEXTAUTH_SECRET=fcvxe9oxp6ppcpn3c4dyi8inf0bjs91xmfd00tpp
+      
+      # Supabase Configuration
+      - NEXT_PUBLIC_SUPABASE_URL=https://studio.praisesistemas.uk
+      - NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ewogICJyb2xlIjogImFub24iLAogICJpc3MiOiAic3VwYWJhc2UiLAogICJpYXQiOiAxNzAzMzg2ODAwLAogICJleHAiOiAxODYxMjM5NjAwCn0.kU_d1xlxfuEgkYMC0mYoiZHQpUvRE2EnilTZ7S0bfIM
+      - SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ewogICJyb2xlIjogInNlcnZpY2Vfcm9sZSIsCiAgImlzcyI6ICJzdXBhYmFzZSIsCiAgImlhdCI6IDE3MDMzODY4MDAsCiAgImV4cCI6IDE4NjEyMzk2MDAKfQ.mj3UcBqInQLBf0hTWf5HILeZa8yKfT5Oic6oFbO11LM
+      
+      # Webhook Configuration
+      - NEXT_PUBLIC_WEBHOOK_URL=https://pshot.praisechat.com.br/api/webhook
+      
+      # Encryption Secret
+      - ENCRYPTION_SECRET=fcvxe9oxp6ppcpn3c4dyi8inf0bjs91xmfd00tpp
+    
+    labels:
+      # Traefik configuração mínima
+      - "traefik.enable=true"
+      - "traefik.http.routers.pshot-simple.rule=Host(`pshot.praisechat.com.br`)"
+      - "traefik.http.routers.pshot-simple.entrypoints=websecure"
+      - "traefik.http.routers.pshot-simple.tls.certresolver=letsencryptresolver"
+      - "traefik.http.services.pshot-simple.loadbalancer.server.port=3000"
+
+networks:
+  network_public:
+    external: true
+    name: network_public

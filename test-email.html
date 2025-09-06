@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Teste de Email</title>
+</head>
+<body>
+    <h2>Teste de Email no Banco</h2>
+    <input type="email" id="emailInput" placeholder="Digite o email" value="testesenha@gmail.com">
+    <button onclick="testEmail()">Testar Email</button>
+    <pre id="result"></pre>
+
+    <script>
+        async function testEmail() {
+            const email = document.getElementById('emailInput').value;
+            const result = document.getElementById('result');
+            
+            try {
+                const response = await fetch('/api/test-email', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email })
+                });
+                
+                const data = await response.json();
+                result.textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                result.textContent = 'Erro: ' + error.message;
+            }
+        }
+    </script>
+</body>
+</html>

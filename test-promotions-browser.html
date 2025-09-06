@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste API Promoções</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #f5f5f5; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
+        .log { background: #000; color: #0f0; padding: 15px; border-radius: 4px; margin: 10px 0; white-space: pre-wrap; }
+        button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin: 5px; }
+        button:hover { background: #0056b3; }
+        .error { color: #ff0000; }
+        .success { color: #00aa00; }
+        .warning { color: #ff8800; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Teste da API de Promoções</h1>
+        <p>Este teste vai verificar se a API está funcionando corretamente.</p>
+        
+        <button onclick="testarDebugTabela()">🔍 Debug Tabela</button>
+        <button onclick="testarAPI()">🚀 Testar API Completa</button>
+        <button onclick="limparLog()">🧹 Limpar Log</button>
+        
+        <div id="log" class="log">Clique em "Testar API" para começar...</div>
+    </div>
+
+    <script>
+        const logElement = document.getElementById('log');
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const colors = {
+                info: '#0f0',
+                error: '#f00', 
+                success: '#0a0',
+                warning: '#fa0'
+            };
+            
+            const span = document.createElement('span');
+            span.style.color = colors[type] || '#0f0';
+            span.textContent = `[${timestamp}] ${message}\n`;
+            logElement.appendChild(span);
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+        
+        function limparLog() {
+            logElement.innerHTML = '';
+        }
+        
+        async function testarAPI() {
+            log('🔍 INICIANDO TESTE DA API DE PROMOÇÕES', 'info');
+            log('=' .repeat(50), 'info');
+            
+            // PRIMEIRO: Testar debug da tabela
+            await testarDebugTabela();
+            
+            log('', 'info');
+            log('🔄 AGORA TESTANDO API PRINCIPAL...', 'info');
+            log('', 'info');
+            
+            // Dados de teste
+            const testData = {
+                selectedFields: ['Cliente', 'Whatsapp', 'Loja', 'Data_Envio'],
+                startDate: '2024-01-01',
+                endDate: '2024-12-31'
+            };
+            
+            log('📤 Dados enviados:', 'info');
+            log(`   selectedFields: ${JSON.stringify(testData.selectedFields)}`, 'info');
+            log(`   startDate: ${testData.startDate}`, 'info');
+            log(`   endDate: ${testData.endDate}`, 'info');
+            log('', 'info');
+            
+            try {
+                log('🔄 Fazendo requisição para /api/reports/promotions...', 'info');
+                
+                const response = await fetch('/api/reports/promotions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(testData)
+                });
+                
+                log(`📥 Status da resposta: ${response.status}`, response.ok ? 'success' : 'error');
+                log(`📥 Status text: ${response.statusText}`, response.ok ? 'success' : 'error');
+                
+                // Verificar headers
+                log('📋 Headers da resposta:', 'info');
+                for (const [key, value] of response.headers.entries()) {
+                    log(`   ${key}: ${value}`, 'info');
+                }
+                log('', 'info');
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    log('❌ ERRO NA API:', 'error');
+                    log(errorText, 'error');
+                    return;
+                }
+                
+                const result = await response.json();
+                log('✅ RESPOSTA RECEBIDA:', 'success');
+                log(`   success: ${result.success}`, 'success');
+                log(`   total: ${result.total}`, 'success');
+                log(`   userEmpresa: ${result.userEmpresa}`, 'success');
+                log(`   message: ${result.message}`, 'success');
+                log(`   data length: ${result.data?.length || 0}`, 'success');
+                
+                if (result.userInfo) {
+                    log('👤 Informações do usuário:', 'info');
+                    log(`   email: ${result.userInfo.email}`, 'info');
+                    log(`   nome: ${result.userInfo.nome}`, 'info');
+                    log(`   empresa: ${result.userInfo.empresa}`, 'info');
+                    log(`   rede: ${result.userInfo.rede}`, 'info');
+                }
+                
+                log('', 'info');
+                
+                if (result.data && result.data.length > 0) {
+                    log('📊 DADOS ENCONTRADOS:', 'success');
+                    log(`   Total de registros: ${result.data.length}`, 'success');
+                    log('   Primeiro registro:', 'success');
+                    log(JSON.stringify(result.data[0], null, 2), 'success');
+                } else {
+                    log('📭 NENHUM DADO ENCONTRADO', 'warning');
+                    log('', 'warning');
+                    log('🔍 POSSÍVEIS CAUSAS:', 'warning');
+                    log('1. Empresa do usuário não confere com campo "Rede"', 'warning');
+                    log('2. Filtros de data muito restritivos', 'warning');
+                    log('3. Tabela realmente vazia para esta empresa', 'warning');
+                    log('4. Problema de permissões no Supabase', 'warning');
+                    
+                    if (result.userEmpresa) {
+                        log('', 'warning');
+                        log(`💡 DICA: Verifique se existe algum registro com Rede = "${result.userEmpresa}"`, 'warning');
+                        log('   Query para testar no Supabase:', 'warning');
+                        log(`   SELECT * FROM "Relatorio Envio de Promoções" WHERE "Rede" = '${result.userEmpresa}' LIMIT 5;`, 'warning');
+                    }
+                }
+                
+            } catch (error) {
+                log('💥 ERRO NO TESTE:', 'error');
+                log(error.message, 'error');
+                log('', 'error');
+                log('🔍 POSSÍVEIS CAUSAS:', 'error');
+                log('1. Servidor não está rodando', 'error');
+                log('2. Problema de rede', 'error');
+                log('3. Erro de CORS', 'error');
+                log('4. Problema de autenticação', 'error');
+            }
+            
+            log('', 'info');
+            log('🏁 TESTE CONCLUÍDO', 'info');
+        }
+        
+        async function testarDebugTabela() {
+            log('🔍 TESTANDO DEBUG DA TABELA...', 'info');
+            
+            try {
+                const response = await fetch('/api/debug/promotions-table');
+                
+                if (!response.ok) {
+                    log(`❌ Erro no debug: ${response.status}`, 'error');
+                    return;
+                }
+                
+                const result = await response.json();
+                log('✅ DEBUG DA TABELA CONCLUÍDO:', 'success');
+                
+                result.results.tests.forEach(test => {
+                    const status = test.status === 'success' ? '✅' : '❌';
+                    log(`${status} ${test.test}:`, test.status === 'success' ? 'success' : 'error');
+                    
+                    if (test.status === 'success') {
+                        if (test.count !== undefined) {
+                            log(`   Registros: ${test.count}`, 'success');
+                        }
+                        if (test.uniqueValues) {
+                            log(`   Valores únicos: ${JSON.stringify(test.uniqueValues)}`, 'success');
+                        }
+                        if (test.sampleDates) {
+                            log(`   Datas exemplo: ${JSON.stringify(test.sampleDates)}`, 'success');
+                        }
+                        if (test.columns) {
+                            log(`   Colunas: ${JSON.stringify(test.columns)}`, 'success');
+                        }
+                    } else {
+                        log(`   Erro: ${test.error}`, 'error');
+                    }
+                    log('', 'info');
+                });
+                
+            } catch (error) {
+                log(`💥 Erro no debug da tabela: ${error.message}`, 'error');
+            }
+        }
+    </script>
+</body>
+</html>
