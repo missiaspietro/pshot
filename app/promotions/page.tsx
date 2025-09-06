@@ -23,6 +23,7 @@ import { createClient } from "@/lib/supabase-client"
 import { shotLojasService } from "@/lib/shot-lojas"
 import { useAuth } from "@/contexts/auth-context"
 import { ProtectedRouteWithPermission } from "@/components/protected-route-with-permission"
+import { resolveUserNetwork, handleNetworkResolutionFailure } from "@/lib/network-utils"
 
 type PromotionForm = z.infer<typeof promotionSchema>
 
@@ -64,7 +65,18 @@ function PromotionsPageContent() {
         instancia: userDataFromBank.instancia || undefined
       }
       
+      // Validar consistência da rede resolvida
+      const resolvedNetwork = resolveUserNetwork(userData);
+      console.log('🔍 [NETWORK-CONSISTENCY] Rede resolvida para promoções:', resolvedNetwork);
       console.log('[PROMOTIONS] Dados do usuário para buscar promoções:', userData);
+      
+      if (!resolvedNetwork) {
+        handleNetworkResolutionFailure(userData, (message) => {
+          console.warn('⚠️ [LOAD-PROMOTIONS]', message);
+          setErrorMsg(`Erro ao carregar promoções: ${message}`);
+        });
+        return;
+      }
       
       const data = await promotionService.getPromotions(userData)
       setPromotions(data)
@@ -156,7 +168,7 @@ function PromotionsPageContent() {
     }
   };
 
-  // Carregar lojas da tabela bots filtradas pela sub_rede do usuário
+  // Carregar lojas usando a mesma lógica de resolução de rede das promoções
   const loadStores = async () => {
     try {
       // Primeiro carrega os dados do usuário
@@ -168,29 +180,33 @@ function PromotionsPageContent() {
         return;
       }
 
+      // Usar a mesma função de resolução de rede das promoções
+      const resolvedNetwork = resolveUserNetwork(userData);
+      
+      if (!resolvedNetwork) {
+        handleNetworkResolutionFailure(userData, (message) => {
+          console.warn('⚠️ [LOAD-STORES]', message);
+          setErrorMsg(`Erro ao carregar lojas: ${message}`);
+        });
+        setStores([]);
+        return;
+      }
+
       // Verificar se o usuário é Super Admin
       const isSuperAdmin = userData.nivel === 'Super Admin';
       
       if (isSuperAdmin) {
-        // Super Admin vê todas as lojas da sua rede
-        const rede = userData.rede || user?.rede || '';
+        // Super Admin vê todas as lojas da sua rede resolvida
+        console.log(`✅ [Super Admin] Buscando todas as lojas da rede resolvida: ${resolvedNetwork}`);
         
-        if (!rede) {
-          console.warn('⚠️ Usuário Super Admin sem rede definida');
-          setStores([]);
-          return;
-        }
-        
-        console.log(`✅ [Super Admin] Buscando todas as lojas da rede: ${rede}`);
-        
-        const todasLojas = await shotLojasService.getLojasPorUsuario(rede);
+        const todasLojas = await shotLojasService.getLojasPorUsuario(resolvedNetwork);
         const lojasFormatadas = todasLojas.map(loja => ({
           id: loja,
           name: loja
         }));
         
         setStores(lojasFormatadas);
-        console.log(`✅ [Super Admin] ${lojasFormatadas.length} lojas carregadas`);
+        console.log(`✅ [Super Admin] ${lojasFormatadas.length} lojas carregadas para rede: ${resolvedNetwork}`);
       } else {
         // Usuários normais veem apenas sua loja específica
         const userLoja = userData.loja || '';
@@ -214,6 +230,9 @@ function PromotionsPageContent() {
         }
       }
       
+      // Validar consistência: verificar se a rede resolvida é a mesma usada nas promoções
+      console.log('🔍 [NETWORK-CONSISTENCY] Rede resolvida para lojas:', resolvedNetwork);
+      
       // Limpar mensagem de erro se houver
       if (errorMsg) {
         setErrorMsg('');
@@ -221,7 +240,11 @@ function PromotionsPageContent() {
     } catch (error: unknown) {
       console.error('❌ Erro ao carregar lojas:', {
         message: error instanceof Error ? error.message : 'Erro desconhecido',
-        userRede: user?.sub_rede || user?.rede || user?.empresa || 'Não definida'
+        userData: userData ? {
+          rede: userData.rede,
+          empresa: userData.empresa,
+          sub_rede: userData.sub_rede
+        } : 'Não disponível'
       });
       setErrorMsg('Erro ao carregar lojas disponíveis. Tente novamente.');
       setStores([]);
@@ -283,6 +306,19 @@ function PromotionsPageContent() {
         instancia: userDataFromBank.instancia || undefined
       }
 
+      // Validar consistência da rede antes de criar a promoção
+      const resolvedNetwork = resolveUserNetwork(userData);
+      console.log('🔍 [NETWORK-CONSISTENCY] Rede resolvida para criação de promoção:', resolvedNetwork);
+      
+      if (!resolvedNetwork) {
+        handleNetworkResolutionFailure(userData, (message) => {
+          console.error('❌ [CREATE-PROMOTION]', message);
+          setErrorMsg(`Erro ao criar promoção: ${message}`);
+        });
+        setTimeout(() => setErrorMsg(""), 4000);
+        return;
+      }
+
       const created = await promotionService.createPromotion({
         title: data.title,
         description: data.description || "",
@@ -298,8 +334,22 @@ function PromotionsPageContent() {
       setSuccessMsg("Promoção criada com sucesso!");
       setTimeout(() => setSuccessMsg(""), 4000)
     } catch (error) {
-      setErrorMsg("Erro ao criar promoção");
-      setTimeout(() => setErrorMsg(""), 4000)
+      console.error('❌ Erro ao criar promoção:', error);
+      
+      // Provide more specific error messages
+      if (error instanceof Error) {
+        if (error.message.includes('rede')) {
+          setErrorMsg(`Erro de rede: ${error.message}`);
+        } else if (error.message.includes('permissão')) {
+          setErrorMsg(`Erro de permissão: ${error.message}`);
+        } else {
+          setErrorMsg(`Erro ao criar promoção: ${error.message}`);
+        }
+      } else {
+        setErrorMsg("Erro desconhecido ao criar promoção");
+      }
+      
+      setTimeout(() => setErrorMsg(""), 6000); // Longer timeout for detailed messages
     }
   }
 

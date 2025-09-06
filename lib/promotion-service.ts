@@ -1,15 +1,8 @@
 // Serviço para gerenciar promoções no Supabase
 import { createClient } from './supabase-client'
 import { Promotion } from './types'
-
-// Interface para dados do usuário
-interface UserData {
-  email?: string;
-  rede?: string;
-  empresa?: string;
-  sub_rede?: string;
-  instancia?: string;
-}
+import { resolveUserNetwork, validateNetworkExists, handleNetworkResolutionFailure, type UserData } from './network-utils'
+import { shotLojasService } from './shot-lojas'
 
 // Gera uma sequência numérica aleatória semelhante ao exemplo fornecido
 const generateRandomIdPromo = (length = 30) => {
@@ -32,12 +25,21 @@ export const promotionService = {
 
     console.log('👤 Buscando promoções para o usuário:', userData.email)
 
-    // Determinar a rede (priorizar sub_rede, depois rede, depois empresa)
-    const userRede = userData.sub_rede || userData.rede || userData.empresa || null
-    console.log('🔍 Rede do usuário:', userRede)
+    // Usar a função utilitária para resolver a rede com prioridade correta
+    const userRede = resolveUserNetwork(userData)
+    console.log('🔍 Rede resolvida do usuário:', userRede)
 
     if (!userRede) {
-      console.warn('⚠️ Usuário sem Rede definida, retornando array vazio')
+      handleNetworkResolutionFailure(userData, (message) => {
+        console.warn('⚠️ [PROMOTIONS-GET]', message)
+      })
+      return []
+    }
+
+    // Validar se a rede existe na tabela shot_lojas
+    const isNetworkValid = await validateNetworkExists(userRede, shotLojasService)
+    if (!isNetworkValid) {
+      console.warn('⚠️ [PROMOTIONS-GET] Rede não encontrada na tabela shot_lojas:', userRede)
       return []
     }
 
@@ -93,10 +95,26 @@ export const promotionService = {
       throw new Error('Dados do usuário não fornecidos para criar promoção')
     }
     
+    // Usar a função utilitária para resolver a rede com prioridade correta
+    const resolvedNetwork = resolveUserNetwork(userData)
+    
+    if (!resolvedNetwork) {
+      const fallbackNetwork = handleNetworkResolutionFailure(userData)
+      if (!fallbackNetwork) {
+        throw new Error('Não foi possível determinar a rede do usuário para criar a promoção')
+      }
+    }
+
+    // Validar se a rede existe na tabela shot_lojas
+    const isNetworkValid = await validateNetworkExists(resolvedNetwork, shotLojasService)
+    if (!isNetworkValid) {
+      throw new Error(`A rede "${resolvedNetwork}" não foi encontrada no sistema. Verifique suas permissões.`)
+    }
+    
     const insertPayload = {
-      Rede: userData.sub_rede || userData.rede || userData.empresa || null,
+      Rede: resolvedNetwork, // Usar rede resolvida corretamente
       Loja: params.store_id?.toString(),
-      Sub_Rede: userData.sub_rede || null,
+      Sub_Rede: userData.sub_rede || null, // Manter sub_rede como campo separado
       Titulo: params.title,
       Msg: params.description,
       Status: params.is_active ? 'ATIVADA' : 'DESATIVADA',
@@ -105,6 +123,13 @@ export const promotionService = {
       Foto: params.image_url,
       id_promo: generateRandomIdPromo(),
     }
+
+    console.log('📝 [PROMOTION-SERVICE] Criando promoção com payload:', {
+      Rede: insertPayload.Rede,
+      Sub_Rede: insertPayload.Sub_Rede,
+      Loja: insertPayload.Loja,
+      Titulo: insertPayload.Titulo
+    })
 
     const { data, error } = await supabase
       .from('promocoes')
